@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light">
+<meta name="theme-color" content="#F8FAFC">
+<title>会话列表 · CodeBuddy Gate</title>
+<style>{{template "styles"}}</style>
+<style>
+  .toolbar {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 12px;
+    padding: 12px 16px; border-bottom: 1px solid var(--border); background: var(--surface);
+  }
+  .toolbar .spacer { flex: 1 1 auto; }
+  .dir { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  .sessions { width: 100%; border-collapse: collapse; }
+  .sessions th {
+    padding: 10px 16px; text-align: left; white-space: nowrap;
+    color: var(--text-subtle); font-size: 12px; font-weight: 600; letter-spacing: .04em;
+    text-transform: uppercase; background: var(--surface-2); border-bottom: 1px solid var(--border);
+  }
+  .sessions td { padding: 12px 16px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  .sessions tbody tr:last-child td { border-bottom: 0; }
+  .sessions tbody tr { transition: background var(--dur) var(--ease); }
+  .sessions tbody tr:hover { background: var(--surface-2); }
+  .sessions .num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+  .sessions .name { font-weight: 600; }
+  .sessions .sub { display: block; color: var(--text-subtle); font-size: 12px; font-weight: 400; }
+  .cell-actions { text-align: right; }
+  tr.is-stale { color: var(--text-subtle); }
+  tr.is-stale .name { font-weight: 500; }
+
+  /* 窄屏：表格转卡片 */
+  @media (max-width: 760px) {
+    /* 外层容器让位，避免「卡片套卡片」 */
+    .card { background: transparent; border: 0; box-shadow: none; overflow: visible; }
+    .toolbar {
+      margin: 0 12px 12px; padding: 12px;
+      border: 1px solid var(--border); border-radius: var(--radius);
+      background: var(--surface); box-shadow: var(--shadow-sm);
+    }
+    .toolbar .dir { flex: 1 1 160px; min-width: 0; }
+
+    .sessions thead { display: none; }
+    .sessions, .sessions tbody, .sessions tr, .sessions td { display: block; width: 100%; }
+    .sessions tr {
+      margin: 0 12px 12px; padding: 4px 12px;
+      border: 1px solid var(--border); border-radius: var(--radius);
+      background: var(--surface); box-shadow: var(--shadow-sm);
+    }
+    .sessions td {
+      display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
+      padding: 8px 0; border-bottom: 1px dashed var(--border);
+      text-align: right;
+    }
+    .sessions td > * { min-width: 0; }
+    .sessions td:last-child { border-bottom: 0; padding-bottom: 12px; }
+    .sessions td::before {
+      content: attr(data-label); flex: none;
+      color: var(--text-subtle); font-size: 12px; font-weight: 600;
+    }
+    /* 时间类长值允许在空格处折行，避免把卡片撑出横向滚动 */
+    .sessions td .num { font-size: 14px; }
+    .sessions td code { overflow-wrap: anywhere; }
+
+    .sessions td.cell-project {
+      display: block; padding-top: 12px; padding-bottom: 12px;
+      font-size: 17px; text-align: left;
+    }
+    .sessions td.cell-project::before { content: none; }
+    .sessions td.cell-project .sub { margin-top: 2px; }
+
+    .sessions td.cell-actions { padding-bottom: 12px; }
+    .sessions td.cell-actions .btn { width: 100%; min-height: 44px; }
+    .sessions td.is-hidden-sm { display: none; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+  <header class="page-head">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M8 6 3 12l5 6"></path><path d="m16 6 5 6-5 6"></path>
+        </svg>
+      </span>
+      <div>
+        <h1>CodeBuddy Gate</h1>
+        <p>本机 codebuddy code 会话总览</p>
+      </div>
+    </div>
+    <div class="meta">
+      <a class="btn" href="/logout">退出登录</a>
+    </div>
+  </header>
+
+  <section class="card">
+    <div class="toolbar">
+      <span class="pill"><span id="count">{{len .Sessions}}</span> 个会话</span>
+      <span class="muted dir" title="{{.Dir}}">目录 <code>{{.Dir}}</code></span>
+      <span class="spacer"></span>
+      <label class="checkbox">
+        <input type="checkbox" id="stale" {{if .ShowAll}}checked{{end}}>
+        <span>显示已退出</span>
+      </label>
+    </div>
+
+    <table class="sessions">
+      <caption class="sr-only">codebuddy code 会话列表</caption>
+      <thead>
+        <tr>
+          <th scope="col">项目</th>
+          <th scope="col">Session</th>
+          <th scope="col">PID</th>
+          <th scope="col">状态</th>
+          <th scope="col">最近心跳</th>
+          <th scope="col">启动时间</th>
+          <th scope="col">版本</th>
+          <th scope="col">Endpoint</th>
+          <th scope="col"><span class="sr-only">操作</span></th>
+        </tr>
+      </thead>
+      <tbody id="rows">
+      {{range .Sessions}}
+        <tr class="{{if not .Active}}is-stale{{end}}">
+          <td class="cell-project" data-label="项目">
+            <span class="name">{{.Project}}</span>
+            <span class="sub dir" title="{{.CWD}}">{{.CWD}}</span>
+          </td>
+          <td data-label="Session"><code title="{{.SessionID}}">{{slice .SessionID 0 8}}</code></td>
+          <td class="num" data-label="PID">{{.PID}}</td>
+          <td data-label="状态">
+            <span class="status {{if .Active}}status--on{{else}}status--off{{end}}">
+              <span class="dot"></span>{{if .Active}}活跃{{else}}已退出{{end}}
+            </span>
+          </td>
+          <td class="num" data-label="最近心跳">{{.Heartbeat}}</td>
+          <td class="num" data-label="启动时间">{{.Started}}</td>
+          <td class="num is-hidden-sm" data-label="版本">{{.Version}}</td>
+          <td class="is-hidden-sm" data-label="Endpoint"><code>{{.Endpoint}}</code></td>
+          <td class="cell-actions"><a class="btn btn--primary" href="{{.Path}}">打开</a></td>
+        </tr>
+      {{end}}
+      </tbody>
+    </table>
+
+    <div class="empty" id="empty" {{if .Sessions}}hidden{{end}}>
+      <svg class="empty-icon" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <rect x="3" y="3" width="18" height="18" rx="2"></rect>
+        <path d="M8 12h8"></path>
+      </svg>
+      <p class="title">没有{{if not .ShowAll}}运行中{{end}}的会话</p>
+      <p class="muted">在 codebuddy code 里启动一个会话，它会出现在这里</p>
+    </div>
+  </section>
+</div>
+
+<script>
+  const rows = document.getElementById('rows');
+  const empty = document.getElementById('empty');
+  const count = document.getElementById('count');
+  const stale = document.getElementById('stale');
+
+  stale.addEventListener('change', () => {
+    location.href = stale.checked ? '/list?all=1' : '/list';
+  });
+
+  function esc(v) {
+    return String(v ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  }
+
+  function render(list) {
+    count.textContent = list.length;
+    empty.hidden = list.length > 0;
+    rows.innerHTML = list.map(s => `<tr class="${s.active ? '' : 'is-stale'}">
+      <td class="cell-project" data-label="项目">
+        <span class="name">${esc(s.project)}</span>
+        <span class="sub dir" title="${esc(s.cwd)}">${esc(s.cwd)}</span>
+      </td>
+      <td data-label="Session"><code title="${s.sessionId}">${esc(s.sessionId.slice(0, 8))}</code></td>
+      <td class="num" data-label="PID">${s.pid}</td>
+      <td data-label="状态">
+        <span class="status ${s.active ? 'status--on' : 'status--off'}">
+          <span class="dot"></span>${s.active ? '活跃' : '已退出'}
+        </span>
+      </td>
+      <td class="num" data-label="最近心跳">${esc(s.heartbeat)}</td>
+      <td class="num" data-label="启动时间">${esc(s.started)}</td>
+      <td class="num is-hidden-sm" data-label="版本">${esc(s.version)}</td>
+      <td class="is-hidden-sm" data-label="Endpoint"><code>${esc(s.endpoint)}</code></td>
+      <td class="cell-actions"><a class="btn btn--primary" href="${s.path}">打开</a></td>
+    </tr>`).join('');
+  }
+
+  async function refresh() {
+    try {
+      const r = await fetch('/_gate/api/sessions' + (stale.checked ? '?all=1' : ''), { cache: 'no-store' });
+      if (r.ok) { render(await r.json()); }
+    } catch (e) { /* 下一轮再试 */ }
+  }
+
+  setInterval(refresh, 5000);
+</script>
+</body>
+</html>

@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light">
+<meta name="theme-color" content="#F8FAFC">
+<title>登录 · CodeBuddy Gate</title>
+<style>{{template "styles"}}</style>
+<style>
+  .shell { display: grid; place-items: center; min-height: 100vh; }
+  .login-card { width: 100%; max-width: 400px; padding: clamp(24px, 6vw, 32px); }
+  .login-head { text-align: center; margin-bottom: 24px; }
+  .login-head .brand-mark { width: 48px; height: 48px; border-radius: 14px; margin: 0 auto 12px; }
+  .login-head h1 { margin: 0 0 4px; font-size: 20px; font-weight: 650; }
+  .login-head p { margin: 0; color: var(--text-subtle); font-size: 14px; }
+
+  .submit { width: 100%; min-height: 48px; margin-top: 4px; }
+  .spinner {
+    width: 16px; height: 16px; border: 2px solid rgba(255, 255, 255, .4);
+    border-top-color: #fff; border-radius: 50%;
+    animation: spin .6s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+<div class="shell">
+  <section class="card login-card">
+    <div class="login-head">
+      <span class="brand-mark" aria-hidden="true">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M8 6 3 12l5 6"></path><path d="m16 6 5 6-5 6"></path>
+        </svg>
+      </span>
+      <h1>CodeBuddy Gate</h1>
+      <p>登录后访问本机 codebuddy code 会话</p>
+    </div>
+
+    {{if .Error}}
+    <div class="alert" role="alert">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+        <circle cx="12" cy="12" r="10"></circle><path d="M12 8v4"></path><path d="M12 16h.01"></path>
+      </svg>
+      <span>{{.Error}}</span>
+    </div>
+    {{end}}
+
+    <form method="post" action="/login" id="login-form">
+      <input type="hidden" name="next" value="{{.Next}}">
+      <div class="field">
+        <label for="user">用户名</label>
+        <input class="input" id="user" name="user" type="text" autocomplete="username" required autofocus>
+      </div>
+      <div class="field">
+        <label for="pass">密码</label>
+        <div class="input-wrap">
+          <input class="input" id="pass" name="pass" type="password" autocomplete="current-password" required>
+          <button class="reveal" type="button" id="reveal" aria-label="显示密码" aria-pressed="false">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"></path><circle cx="12" cy="12" r="3"></circle>
+            </svg>
+          </button>
+        </div>
+      </div>
+      <button class="btn btn--primary submit" type="submit" id="submit">登录</button>
+    </form>
+  </section>
+</div>
+
+<script>
+  const form = document.getElementById('login-form');
+  const submit = document.getElementById('submit');
+  const pass = document.getElementById('pass');
+  const reveal = document.getElementById('reveal');
+
+  reveal.addEventListener('click', () => {
+    const show = pass.type === 'password';
+    pass.type = show ? 'text' : 'password';
+    reveal.setAttribute('aria-pressed', String(show));
+    reveal.setAttribute('aria-label', show ? '隐藏密码' : '显示密码');
+  });
+
+  form.addEventListener('submit', () => {
+    submit.disabled = true;
+    submit.innerHTML = '<span class="spinner"></span><span>登录中…</span>';
+  });
+</script>
+</body>
+</html>

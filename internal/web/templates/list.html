@@ -32,6 +32,15 @@
   tr.is-stale { color: var(--text-subtle); }
   tr.is-stale .name { font-weight: 500; }
 
+  /* 桌面端：内容区已放宽，表格按自身宽度展示；窗口偏窄时允许横向滚动，
+     并把操作列吸附在右侧，避免「打开」按钮被卡片裁掉 */
+  @media (min-width: 761px) {
+    .card { overflow-x: auto; }
+    .sessions td { white-space: nowrap; }
+    .sessions td.cell-actions { position: sticky; right: 0; background-color: var(--surface); }
+    .sessions tbody tr:hover td.cell-actions { background-color: var(--surface-2); }
+  }
+
   /* 窄屏：表格转卡片 */
   @media (max-width: 760px) {
     /* 外层容器让位，避免「卡片套卡片」 */
@@ -140,7 +149,7 @@
           <td class="num" data-label="最近心跳">{{.Heartbeat}}</td>
           <td class="num" data-label="启动时间">{{.Started}}</td>
           <td class="num is-hidden-sm" data-label="版本">{{.Version}}</td>
-          <td class="is-hidden-sm" data-label="Endpoint"><code>{{.Endpoint}}</code></td>
+          <td class="cell-endpoint" data-label="Endpoint"><code>{{.Endpoint}}</code></td>
           <td class="cell-actions"><a class="btn btn--primary" href="{{.Path}}">打开</a></td>
         </tr>
       {{end}}
@@ -190,7 +199,7 @@
       <td class="num" data-label="最近心跳">${esc(s.heartbeat)}</td>
       <td class="num" data-label="启动时间">${esc(s.started)}</td>
       <td class="num is-hidden-sm" data-label="版本">${esc(s.version)}</td>
-      <td class="is-hidden-sm" data-label="Endpoint"><code>${esc(s.endpoint)}</code></td>
+      <td class="cell-endpoint" data-label="Endpoint"><code>${esc(s.endpoint)}</code></td>
       <td class="cell-actions"><a class="btn btn--primary" href="${s.path}">打开</a></td>
     </tr>`).join('');
   }
